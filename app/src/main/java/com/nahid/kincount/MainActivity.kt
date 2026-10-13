@@ -20,11 +20,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.nahid.kincount.ui.add.AddScreen
+import com.nahid.kincount.ui.add.AddEditScreen
 import com.nahid.kincount.ui.daily.DailyScreen
 import com.nahid.kincount.ui.dashboard.DashboardScreen
 import com.nahid.kincount.ui.theme.KinCountTheme
@@ -49,6 +50,8 @@ private enum class Tab(val route: String, val label: String, val icon: ImageVect
     Daily("daily", "Daily", Icons.Filled.DateRange),
 }
 
+private const val ROUTE_EDIT = "edit/{txId}"
+
 @Composable
 private fun KinCountRoot(modifier: Modifier = Modifier) {
     val navController = rememberNavController()
@@ -62,15 +65,7 @@ private fun KinCountRoot(modifier: Modifier = Modifier) {
                 Tab.entries.forEach { tab ->
                     NavigationBarItem(
                         selected = currentRoute == tab.route,
-                        onClick = {
-                            navController.navigate(tab.route) {
-                                popUpTo(navController.graph.findStartDestination().id) {
-                                    saveState = true
-                                }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { navController.navigateTab(tab) },
                         icon = { Icon(tab.icon, contentDescription = tab.label) },
                         label = { Text(tab.label) },
                     )
@@ -84,8 +79,33 @@ private fun KinCountRoot(modifier: Modifier = Modifier) {
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(Tab.Dashboard.route) { DashboardScreen() }
-            composable(Tab.Add.route) { AddScreen() }
-            composable(Tab.Daily.route) { DailyScreen() }
+            composable(Tab.Add.route) {
+                AddEditScreen(
+                    txId = null,
+                    onDone = { navController.navigateTab(Tab.Daily) },
+                )
+            }
+            composable(Tab.Daily.route) {
+                DailyScreen(
+                    onEdit = { txId -> navController.navigate("$ROUTE_EDIT_PREFIX$txId") },
+                )
+            }
+            composable(ROUTE_EDIT) { backStackEntry ->
+                AddEditScreen(
+                    txId = backStackEntry.arguments?.getString("txId"),
+                    onDone = { navController.popBackStack() },
+                )
+            }
         }
+    }
+}
+
+private const val ROUTE_EDIT_PREFIX = "edit/"
+
+private fun NavHostController.navigateTab(tab: Tab) {
+    navigate(tab.route) {
+        popUpTo(graph.findStartDestination().id) { saveState = true }
+        launchSingleTop = true
+        restoreState = true
     }
 }
